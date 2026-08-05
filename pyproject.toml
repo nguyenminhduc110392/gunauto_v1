@@ -1,33 +1,40 @@
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "gunauto-v1"
-version = "0.1.0"
-description = "Modular gun-video generation pipeline"
-requires-python = ">=3.11"
+version = "0.2.0"
+description = "Concurrent gun video production workflow platform"
+requires-python = ">=3.12"
 dependencies = [
-  "fastapi>=0.116,<1.0",
-  "uvicorn[standard]>=0.35,<1.0",
-  "pydantic>=2.11,<3.0",
-  "pydantic-settings>=2.10,<3.0",
-  "python-multipart>=0.0.20,<1.0",
+  "alembic>=1.13,<2",
+  "asyncpg>=0.29,<1",
+  "celery[redis]>=5.4,<6",
+  "fastapi>=0.115,<1",
+  "flower>=2,<3",
+  "pydantic-settings>=2.4,<3",
+  "python-multipart>=0.0.9,<1",
+  "redis>=5,<6",
+  "sqlalchemy>=2.0,<3",
+  "uvicorn[standard]>=0.30,<1",
 ]
 
 [project.optional-dependencies]
-video = [
-  "moviepy>=2.1,<3.0",
-  "Pillow>=11.0,<12.0",
-  "numpy>=2.0,<3.0",
-]
-ai = [
-  "openai>=1.99,<2.0",
-  "httpx>=0.28,<1.0",
-]
 dev = [
-  "pytest>=8.4,<9.0",
-  "ruff>=0.12,<1.0",
+  "httpx>=0.27,<1",
+  "pytest>=8,<9",
+  "pytest-asyncio>=0.23,<1",
+  "ruff>=0.6,<1",
 ]
 
-[tool.ruff]
-line-length = 100
+[tool.setuptools.packages.find]
+include = ["app*"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120

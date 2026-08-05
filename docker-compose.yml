@@ -1,0 +1,95 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: gunauto
+      POSTGRES_USER: gunauto
+      POSTGRES_PASSWORD: gunauto
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gunauto -d gunauto"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  api:
+    build: .
+    env_file: .env
+    command: sh -c "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app
+      - gunauto_storage:/app/storage
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker-default:
+    build: .
+    env_file: .env
+    command: celery -A app.workers.celery_app:celery_app worker -Q default -n default@%h --loglevel=INFO --concurrency=2
+    volumes: [".:/app", "gunauto_storage:/app/storage"]
+    depends_on: [postgres, redis]
+
+  worker-ai:
+    build: .
+    env_file: .env
+    command: celery -A app.workers.celery_app:celery_app worker -Q ai -n ai@%h --loglevel=INFO --concurrency=4
+    volumes: [".:/app", "gunauto_storage:/app/storage"]
+    depends_on: [postgres, redis]
+
+  worker-audio:
+    build: .
+    env_file: .env
+    command: celery -A app.workers.celery_app:celery_app worker -Q audio -n audio@%h --loglevel=INFO --concurrency=2
+    volumes: [".:/app", "gunauto_storage:/app/storage"]
+    depends_on: [postgres, redis]
+
+  worker-assets:
+    build: .
+    env_file: .env
+    command: celery -A app.workers.celery_app:celery_app worker -Q assets -n assets@%h --loglevel=INFO --concurrency=4
+    volumes: [".:/app", "gunauto_storage:/app/storage"]
+    depends_on: [postgres, redis]
+
+  worker-render:
+    build: .
+    env_file: .env
+    command: celery -A app.workers.celery_app:celery_app worker -Q render -n render@%h --loglevel=INFO --concurrency=1
+    volumes: [".:/app", "gunauto_storage:/app/storage"]
+    depends_on: [postgres, redis]
+
+  beat:
+    build: .
+    env_file: .env
+    command: celery -A app.workers.celery_app:celery_app beat --loglevel=INFO
+    volumes: [".:/app", "gunauto_storage:/app/storage"]
+    depends_on: [postgres, redis]
+
+  flower:
+    build: .
+    env_file: .env
+    command: celery -A app.workers.celery_app:celery_app flower --port=5555
+    ports:
+      - "5555:5555"
+    depends_on: [redis]
+
+volumes:
+  postgres_data:
+  redis_data:
+  gunauto_storage:
